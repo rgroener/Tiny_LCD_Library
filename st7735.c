@@ -20,6 +20,10 @@ extern int const DC;
 extern int const MOSI;
 extern int const SCK;
 extern int const CS;
+// Text scale and plot colours defined in st7735.c
+extern int fore; // White
+extern int back;      // Black
+extern int scale;     // Text scale
 
 */
 
@@ -34,10 +38,10 @@ extern int const CS;
 //int const ysize = 80, xsize = 160, yoff = 26, xoff = 1, invert = 1, rotate = 0;
 
 // Adafruit 1.44" 128x128 display
-// int const ysize = 128, xsize = 128, yoff = 3, xoff = 2, invert = 0, rotate = 5;
+ int const ysize = 128, xsize = 128, yoff = 3, xoff = 2, invert = 0, rotate = 3;
 
 // Adafruit 1.8" 128x160 display
- int const ysize = 128, xsize = 160, yoff = 0, xoff = 0, invert = 0, rotate = 0;
+ //int const ysize = 128, xsize = 160, yoff = 0, xoff = 0, invert = 0, rotate = 5;
 
 // Adafruit 1.54" 240x240 display
 //int const ysize = 240, xsize = 240, yoff = 0, xoff = 0, invert = 1, rotate = 3;
