@@ -29,22 +29,10 @@ extern int scale;     // Text scale
 
 #include "st7735.h"
 
-// Display dimensions - uncomment the one you want to use
-
-// Adafruit 0.96" 80x160 display
-//int const ysize = 80, xsize = 160, yoff = 24, xoff = 0, invert = 0, rotate = 0;
-
-// AliExpress 0.96" 80x160 display
-//int const ysize = 80, xsize = 160, yoff = 26, xoff = 1, invert = 1, rotate = 0;
+extern void SPI_MasterTransmit(char cData);
 
 // Adafruit 1.44" 128x128 display
- int const ysize = 128, xsize = 128, yoff = 3, xoff = 2, invert = 0, rotate = 3;
-
-// Adafruit 1.8" 128x160 display
- //int const ysize = 128, xsize = 160, yoff = 0, xoff = 0, invert = 0, rotate = 5;
-
-// Adafruit 1.54" 240x240 display
-//int const ysize = 240, xsize = 240, yoff = 0, xoff = 0, invert = 1, rotate = 3;
+ int const ysize = 128, xsize = 128, yoff = 1, xoff = 2, invert = 0, rotate = 3;
 
 // ATtiny85 pins
  int const DC = PB1;
@@ -165,20 +153,25 @@ const uint8_t CharMap[96][6] PROGMEM = {
  int scale = 1;     // Text scale
 
 // Send a byte to the display
-void Data (uint8_t d) 
+/*void Data (uint8_t d) 
+{
+  SPI_MasterTransmit(d);
+}*/
+// Send a byte to the display
+/*void Data (uint8_t d) 
 {
   for (uint8_t bit = 0x80; bit; bit >>= 1) {
     PINB = 1<<SCK;                         // sck low
     if (d & bit) PORTB = PORTB | (1<<MOSI); else PORTB = PORTB & ~(1<<MOSI);
     PINB = 1<<SCK;                         // sck high
   }
-}
+}*/
 
 // Send a command to the display
 void Command (uint8_t c) 
 {
     PINB = 1<<DC;                          // dc low
-    Data(c);
+    SPI_MasterTransmit(c);
     PINB = 1<<DC;                          // dc high again
 }
 
@@ -186,9 +179,9 @@ void Command (uint8_t c)
 void Command4 (uint8_t c, uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4) 
 {
     PINB = (1<<DC);                          // dc low
-    Data(c);
+    SPI_MasterTransmit(c);
     PINB = 1<<DC;                          // dc high again
-    Data(d1); Data(d2); Data(d3); Data(d4);
+    SPI_MasterTransmit(d1); SPI_MasterTransmit(d2); SPI_MasterTransmit(d3); SPI_MasterTransmit(d4);
 }
   
 void InitDisplay (void) 
@@ -200,9 +193,9 @@ void InitDisplay (void)
   _delay_ms(150);                              // _delay_ms 150 ms
   Command(0x11);                           // Out of sleep mode
   _delay_ms(500);                              // _delay_ms 500 ms
-  Command(0x3A); Data(0x05);               // Set color mode - 16-bit color
-  Command(0x20+invert);                    // Invert
-  Command(0x36); Data(rotate<<5);          // Set orientation
+	Command(0x3A); SPI_MasterTransmit(0x05);               // Set color mode - 16-bit color (rgb 5-6-5)
+   Command(0x20+invert);                    // Invert
+  Command(0x36); SPI_MasterTransmit(rotate<<5);          // Set orientation
   PINB = 1<<CS;                            // cs high
 }
 
@@ -219,21 +212,23 @@ void ClearDisplay (void)
   PINB = 1<<CS;                            // cs low
   Command4(CASET, yoff>>8, yoff, 0, yoff + ysize - 1);
   Command4(RASET, xoff>>8, xoff, 0, xoff + xsize - 1);
-  Command(0x3A); Data(0x03);               // 12-bit colour
+  Command(0x3A); SPI_MasterTransmit(0x03);               // 12-bit colour
   Command(RAMWR);
   for (int i=0; i<xsize/2; i++) {
     for (int j=0; j<ysize * 3; j++) 
     {
-      Data(0);
+      SPI_MasterTransmit(0);
     }
   }
-  Command(0x3A); Data(0x05);               // Back to 16-bit colour
+  Command(0x3A); SPI_MasterTransmit(0x05);               // Back to 16-bit colour
+  //8-bit data bus for 16-bit/pixel (RGB 5-6-5-bit input), 65K-Colors, 3AH= “05h”
   PINB = 1<<CS;                            // cs high
 }
 
-unsigned int Colour (int r, int g, int b) 
+unsigned int Colour (int b, int g, int r) 
 {
   return (r & 0xf8)<<8 | (g & 0xfc)<<3 | b>>3;
+  //return (r & 0xf8)<<8 | (g & 0xfc)<<3 | b>>3;//original 
 }
 
 // Move current plot position to x,y
@@ -248,7 +243,7 @@ void PlotPoint (int x, int y)
   PINB = 1<<CS;                            // cs low
   Command4(CASET, 0, yoff+y, 0, yoff+y);
   Command4(RASET, 0, xoff+x, 0, xoff+x);
-  Command(RAMWR); Data(fore>>8); Data(fore & 0xff);
+  Command(RAMWR); SPI_MasterTransmit(fore>>8); SPI_MasterTransmit(fore & 0xff);
   PINB = 1<<CS;                            // cs high
 }
 
@@ -277,7 +272,7 @@ void FillRect (int w, int h)
   Command4(RASET, 0, x_0+xoff, 0, x_0+xoff+w-1);
   Command(RAMWR);
   for (int p=0; p<w*h*2; p++) {
-    Data(fore>>8); Data(fore & 0xff);
+    SPI_MasterTransmit(fore>>8); SPI_MasterTransmit(fore & 0xff);
   }
   PINB = 1<<CS;                            // cs high
 }
@@ -290,13 +285,17 @@ void PlotChar (char c)
   Command4(CASET, 0, yoff+y_0, 0, yoff+y_0+8*scale-1);
   Command4(RASET, 0, xoff+x_0, 0, xoff+x_0+6*scale-1);
   Command(RAMWR);
-  for (int xx=0; xx<6; xx++) {
+  for (int xx=0; xx<6; xx++) 
+  {
     int bits = pgm_read_byte(&CharMap[c-32][xx]);
-    for (int xr=0; xr<scale; xr++) {
-      for (int yy=0; yy<8; yy++) {
+    for (int xr=0; xr<scale; xr++) 
+    {
+      for (int yy=0; yy<8; yy++) 
+      {
         if (bits>>(7-yy) & 1) colour = fore; else colour = back;
-        for (int yr=0; yr<scale; yr++) {
-          Data(colour>>8); Data(colour & 0xFF);
+        for (int yr=0; yr<scale; yr++) 
+        {
+          SPI_MasterTransmit(colour>>8); SPI_MasterTransmit(colour & 0xFF);
         }
       }
     }
@@ -333,6 +332,14 @@ void setup(void)
   DisplayOn();
   MoveTo(0,0);
 }
+
+void PlotString(const char str[]) 
+{
+	while (*str) PlotChar(*str++);
+}
+
+
+
 void glcd_draw_circle(uint8_t x0, uint8_t y0, uint8_t r)
 {                  
           int8_t f = 1 - r;
@@ -370,3 +377,8 @@ void glcd_draw_circle(uint8_t x0, uint8_t y0, uint8_t r)
                    
            }
    }//end of draw circle
+
+
+
+
+
