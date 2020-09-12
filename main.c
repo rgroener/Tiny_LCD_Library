@@ -124,8 +124,10 @@ int main(void)
     TCCR1B |= (1 << CS11) | (1 << CS10);
     // set prescaler to 64 and start the timer
     
-	/* Enable SPI, Master, set clock rate fck/16 */
-	SPCR = (1<<SPE)|(1<<MSTR);	
+	/* Enable SPI, Master, set clock rate fck/2 */
+	SPCR = (1<<SPE)|(1<<MSTR); 
+	SPSR = (1<<SPI2X);
+	
     sei();
     // enable interrupts
     
@@ -192,7 +194,7 @@ int main(void)
 	
 	MoveTo(10,0);
 	scale=2;
-	sprintf(stringbuffer,"sec:%d",speedtest);
+	sprintf(stringbuffer,"ms = %d",speedtest);
 	PlotString(stringbuffer);
 	
 	fore=WHITE;
